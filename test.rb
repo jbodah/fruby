@@ -18,6 +18,7 @@ def test(name, &block)
 rescue => e
   print_failure name
   puts e.to_s.red
+  puts e.backtrace.map(&:red)
 end
 
 puts "Testing..."
@@ -71,6 +72,31 @@ test 'it evaluates correctly with multiple chains' do
     "hello" |> reverse |> reverse
   EOF
   res == "hello"
+end
+
+# NOTE: @jbodah 2016-04-08: local vars won't work as this is forbidden in Ruby
+test 'you can save itermediary results to instance variables' do
+  Fruby.eval binding, <<-EOF
+    @word = "hello" |> reverse |> reverse
+  EOF
+  @word == "hello"
+end
+
+test 'you can define multiple pipelines' do
+  res = Fruby.eval binding, <<-EOF
+    "hello" |> reverse |> reverse
+
+    "hello" |> Helper.count_chars
+  EOF
+  res == 5
+end
+
+test 'you can share itermediary results between pipelines' do
+  res = Fruby.eval binding, <<-EOF
+    word = "hello" |> reverse |> reverse
+    word |> Helper.count_chars_and_add(3)
+  EOF
+  res == 8
 end
 
 test 'it uses binding_of_caller if it exists' do
