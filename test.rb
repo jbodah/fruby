@@ -108,6 +108,27 @@ test 'it can be used with enumerable methods' do
   res == [3, 4]
 end
 
+test 'it supports pattern matching' do
+  Fruby.eval binding, <<-EOF
+    def say("hello")
+      "hi there"
+    end
+
+    def say(Integer => n)
+      "the number \#{n}"
+    end
+
+    def say(Array => n)
+      "an array of size \#{n.size}"
+    end
+  EOF
+
+  say "hello" == "hi there"
+  say 6 == "the number 6"
+  say 4 == "the number 4"
+  say [1, 2, 4] == "an array of size 3"
+end
+
 at_exit {
   test 'it uses binding_of_caller if it exists' do
     require 'binding_of_caller'
