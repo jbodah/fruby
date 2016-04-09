@@ -2,6 +2,12 @@ require 'ruby2ruby'
 require 'ruby_parser'
 
 module Fruby
+  module Self
+    def self.method_missing(sym, actual_receiver, *args, &block)
+      actual_receiver.public_send(sym, *args, &block)
+    end
+  end
+
   class Compiler
     # @returns [String] ruby code
     def self.compile(str)
@@ -14,18 +20,24 @@ module Fruby
       parser = RubyParser.new
       queue.map! { |i| parser.parse(i) }
       sexp = queue.shift
-      if %i(lasgn iasgn cdecl).include?(sexp.first)
-        inner = parse_pipe_queue(parser, queue, sexp.last)
-        sexp = Sexp.from_array(sexp.first(2) << inner.to_a)
-      else
-        sexp = parse_pipe_queue(parser, queue, sexp)
-      end
+      sexp = if %i(lasgn iasgn cdecl).include?(sexp.first)
+               inner = parse_pipe_queue(queue, sexp.last)
+               Sexp.from_array(sexp.first(2) << inner.to_a)
+             else
+               parse_pipe_queue(queue, sexp)
+             end
       Ruby2Ruby.new.process sexp
     end
 
-    def self.parse_pipe_queue(parser, queue, sexp)
+    def self.parse_pipe_queue(queue, sexp)
       queue.reduce(sexp) do |inner, outer|
-        sexp_arr = outer.to_a.insert(3, inner.to_a)
+        # find index of first call and insert inner as first variable to call
+        if outer.first == :iter
+          sexp_arr = outer.to_a
+          sexp_arr[1].insert(3, inner.to_a)
+        else
+          sexp_arr = outer.to_a.insert(3, inner.to_a)
+        end
         Sexp.from_array sexp_arr
       end
     end

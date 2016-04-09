@@ -99,12 +99,23 @@ test 'you can share itermediary results between pipelines' do
   res == 8
 end
 
-test 'it uses binding_of_caller if it exists' do
-  require 'binding_of_caller'
-  n = 3
-  res = Fruby.eval <<-EOF
-    "hello"
-    |> Helper.count_chars_and_add(n)
+test 'it can be used with enumerable methods' do
+  res = Fruby.eval binding, <<-EOF
+    [1, 2, 3]
+    |> Fruby::Self.map { |n| n + 1 }
+    |> Fruby::Self.select { |n| n >= 3 }
   EOF
-  res == 8
+  res == [3, 4]
 end
+
+at_exit {
+  test 'it uses binding_of_caller if it exists' do
+    require 'binding_of_caller'
+    n = 3
+    res = Fruby.eval <<-EOF
+      "hello"
+      |> Helper.count_chars_and_add(n)
+    EOF
+    res == 8
+  end
+}
